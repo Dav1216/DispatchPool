@@ -1,0 +1,30 @@
+# Object files
+*.o
+
+# Compiled binaries
+/bin/
+
+# macOS system files
+.DS_Store
+
+# Editor/project files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# Logs
+*.log
+logs/
+
+# Generated files
+*.out
+*.pid
+*.sock
+
+# Backup files
+*~
+*.bak
+
+debug/
