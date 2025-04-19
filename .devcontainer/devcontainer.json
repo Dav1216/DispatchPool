@@ -1,0 +1,15 @@
+{
+    "name": "DispatchPool++ Dev",
+    "build": {
+      "dockerfile": "../Dockerfile"
+    },
+    "context": "..",
+    "settings": {
+      "terminal.integrated.defaultProfile.linux": "zsh"
+    },
+    "mounts": [
+      "source=${localWorkspaceFolder},target=/app,type=bind"
+    ],
+    "postCreateCommand": "make"
+  }
+  

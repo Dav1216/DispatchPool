@@ -7,6 +7,8 @@
 # macOS system files
 .DS_Store
 
+.clang-format
+
 # Editor/project files
 .vscode/
 .idea/
