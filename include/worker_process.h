@@ -2,5 +2,5 @@
 
 class WorkerProcess {
    public:
-    void run();
+   void run(const char* queue_name);
 };

@@ -1,21 +1,24 @@
 # === Compiler and flags ===
 CXX := clang++
 CXXFLAGS := -std=c++17 -Wall -Wextra -pedantic -g -Iinclude
-# -Wall warnings
-# -Wextra extra warnings
-# -pedantic strict ISO c++
-# -G DEBUG INFO
-# -Iinclude adds include directoy to the header search path
 
 # === Project structure ===
-SRC := $(wildcard src/*.cpp)
-OBJ := $(SRC:.cpp=.o)
-BIN := bin/main
+MAIN_SRC := $(filter-out src/worker_process.cpp, $(wildcard src/*.cpp))
+MAIN_OBJ := $(MAIN_SRC:.cpp=.o)
+WORKER_SRC := src/worker_process.cpp
+WORKER_OBJ := $(WORKER_SRC:.cpp=.o)
 
-# === Build target ===
-all: $(BIN)
-# : dependes on second part
-$(BIN): $(OBJ) 
+MAIN_BIN := bin/main
+WORKER_BIN := bin/worker
+
+# === Build targets ===
+all: $(MAIN_BIN) $(WORKER_BIN)
+
+$(MAIN_BIN): $(MAIN_OBJ)
+	@mkdir -p bin
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
+$(WORKER_BIN): $(WORKER_OBJ)
 	@mkdir -p bin
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
@@ -28,9 +31,8 @@ clean:
 	rm -rf bin
 	rm -f src/*.o
 
-# === Run the program ===
-run: all
-	./$(BIN)
+# === Run the main program ===
+run: $(MAIN_BIN)
+	./$(MAIN_BIN)
 
-# === PHONY targets (not real files) ===
 .PHONY: all clean run
