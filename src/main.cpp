@@ -1,4 +1,4 @@
-// Entry point (initializes and runs Dispatcher)
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <iostream>
@@ -22,4 +22,11 @@ int main() {
         perror("execlp (dealer)");
         exit(1);
     }
+
+    int status;
+    waitpid(tg_pid, &status, 0);
+    waitpid(dealer_pid, &status, 0);
+
+    std::cout << "[Main] All done.\n";
+    return 0;
 }

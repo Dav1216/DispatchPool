@@ -35,12 +35,10 @@ void TaskGenerator::run(const char* queue_generator_name) {
     };
 
     for (const auto& task : tasks) {
+        // when full it blocks here
         if (mq_send(req_q, reinterpret_cast<const char*>(&task), sizeof(task), 0) == -1) {
             perror("[TaskGenerator] mq_send failed");
-        } else {
-            std::cout << "[TaskGenerator] Sent job " << task.job << " → fib(" << task.data << ")\n";
         }
-
         usleep(100000);  // 0.1s
     }
 }

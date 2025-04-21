@@ -1,23 +1,25 @@
 #include "worker.h"
 
 #include <mqueue.h>
-#include <signal.h>
 #include <unistd.h>
 
 #include <iostream>
 
 #include "messages.h"
 
+namespace {
 int fib(int n) {
-    if (n <= 1) return n;
-    return fib(n - 1) + fib(n - 2);
+    return (n <= 1) ? n : fib(n - 1) + fib(n - 2);
 }
+}  // namespace
 
-void Worker::run(const char* queue_name) {
-    std::cout << "[Worker " << getpid() << "] Starting up\n";
+void Worker::run(const char* req_queue_name, const char* resp_queue_name) {
+    int pid = getpid();
+    std::cout << "[Worker " << pid << "] Starting up\n";
 
-    mqd_t req_q = mq_open(queue_name, O_RDONLY);
-    if (req_q == (mqd_t)-1) {
+    mqd_t req_q = mq_open(req_queue_name, O_RDONLY);
+    mqd_t resp_q = mq_open(resp_queue_name, O_WRONLY);
+    if (req_q == (mqd_t)-1 || resp_q == (mqd_t)-1) {
         perror("mq_open (worker)");
         return;
     }
@@ -26,29 +28,31 @@ void Worker::run(const char* queue_name) {
     while (true) {
         ssize_t n = mq_receive(req_q, (char*)&msg, sizeof(msg), nullptr);
         if (n >= 0) {
-            std::cout << "[Worker " << getpid() << "] Job " << msg.job << ": fib(" << msg.data
-                      << ")\n";
-            int result = fib(msg.data);
-            std::cout << "[Worker " << getpid() << "] Result: " << result << "\n";
-
-            if ((std::rand() % 5) == 0) {  // randomly crash a worker
-                std::cerr << "[Worker " << getpid() << "] Crashing on purpose!\n";
-                raise(SIGSEGV);
+            if (msg.job == -2) {
+                break;
             }
+            int result = fib(msg.data);
 
+            MQ_RESPONSE_MESSAGE resp{.job = msg.job, .result = result, .worker = pid};
+
+            if (mq_send(resp_q, (char*)&resp, sizeof(resp), 0) == -1) {
+                perror("[Worker] mq_send (response)");
+            }
         } else {
             perror("mq_receive (worker)");
         }
     }
+
+    std::cout << "[Worker " << getpid() << "] Received shutdown signal\n";
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cerr << "[Worker] Expected queue name as argument\n";
+    if (argc != 3) {
+        std::cerr << "[Worker] Expected request and response queue names\n";
         return 1;
     }
 
     Worker wp;
-    wp.run(argv[1]);
+    wp.run(argv[1], argv[2]);
     return 0;
 }
