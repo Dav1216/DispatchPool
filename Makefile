@@ -1,25 +1,35 @@
 # === Compiler and flags ===
 CXX := clang++
-CXXFLAGS := -std=c++17 -Wall -Wextra -pedantic -g -Iinclude
+CXXFLAGS := -std=c++20 -Wall -Wextra -pedantic -g -Iinclude
 
 # === Project structure ===
-MAIN_SRC := $(filter-out src/worker_process.cpp, $(wildcard src/*.cpp))
-MAIN_OBJ := $(MAIN_SRC:.cpp=.o)
-WORKER_SRC := src/worker_process.cpp
-WORKER_OBJ := $(WORKER_SRC:.cpp=.o)
+BIN_DIR := bin
 
-MAIN_BIN := bin/main
-WORKER_BIN := bin/worker
+# Sources
+MAIN_SRC := src/main.cpp
+DEALER_SRC := src/dealer.cpp
+WORKER_SRC := src/worker.cpp
+GEN_SRC := src/task_generator.cpp
+
+# Objects
+MAIN_OBJ := $(MAIN_SRC:.cpp=.o)
+DEALER_OBJ := $(DEALER_SRC:.cpp=.o)
+WORKER_OBJ := $(WORKER_SRC:.cpp=.o)
+GEN_OBJ := $(GEN_SRC:.cpp=.o)
+
+# Binaries
+MAIN_BIN := $(BIN_DIR)/main
+DEALER_BIN := $(BIN_DIR)/dealer
+WORKER_BIN := $(BIN_DIR)/worker
+GEN_BIN := $(BIN_DIR)/task_generator
 
 # === Build targets ===
-all: $(MAIN_BIN) $(WORKER_BIN)
+ALL_BINS := $(MAIN_BIN) $(DEALER_BIN) $(WORKER_BIN) $(GEN_BIN)
 
-$(MAIN_BIN): $(MAIN_OBJ)
-	@mkdir -p bin
-	$(CXX) $(CXXFLAGS) -o $@ $^
+all: $(ALL_BINS)
 
-$(WORKER_BIN): $(WORKER_OBJ)
-	@mkdir -p bin
+$(BIN_DIR)/%: src/%.o
+	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 # === Compile each .cpp to .o ===
@@ -28,8 +38,7 @@ src/%.o: src/%.cpp
 
 # === Clean build artifacts ===
 clean:
-	rm -rf bin
-	rm -f src/*.o
+	rm -rf $(BIN_DIR) src/*.o
 
 # === Run the main program ===
 run: $(MAIN_BIN)

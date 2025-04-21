@@ -1,4 +1,4 @@
-#include "worker_process.h"
+#include "worker.h"
 
 #include <mqueue.h>
 #include <signal.h>
@@ -13,7 +13,7 @@ int fib(int n) {
     return fib(n - 1) + fib(n - 2);
 }
 
-void WorkerProcess::run(const char* queue_name) {
+void Worker::run(const char* queue_name) {
     std::cout << "[Worker " << getpid() << "] Starting up\n";
 
     mqd_t req_q = mq_open(queue_name, O_RDONLY);
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    WorkerProcess wp;
+    Worker wp;
     wp.run(argv[1]);
     return 0;
 }

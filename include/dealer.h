@@ -1,7 +1,7 @@
 #pragma once
 #include <sys/types.h>
+
 #include <string>
-  // for pid_t
 
 struct WorkerInfo {
     pid_t pid;
@@ -12,5 +12,5 @@ struct WorkerInfo {
 
 class Dealer {
    public:
-    void run();
+    void run(const char* queue_generator_name);
 };
