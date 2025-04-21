@@ -6,10 +6,66 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <iostream>
+#include <thread>
 #include <unordered_set>
 
 #include "messages.h"
+
+std::atomic<int> jobs_sent = 0;
+std::atomic<int> jobs_received = 0;
+std::atomic<bool> generator_finished = false;
+
+// no busy wait, send and receive are blocking if queue is full / empty
+
+// for the two threads no circular wait
+// no thread blocks on one queue before operating on the other queue
+
+// thread 1
+void send_loop(mqd_t gen_q, mqd_t req_q) {
+    MQ_REQUEST_MESSAGE_WORKER msg;
+
+    while (true) {
+        ssize_t gen_n = mq_receive(gen_q, (char*)&msg, sizeof(msg), nullptr);
+
+        if (gen_n >= 0) {
+            if (msg.job == -1) {
+                generator_finished = true;
+                break;
+            } else {
+                if (mq_send(req_q, (char*)&msg, sizeof(msg), 0) == -1) {
+                    perror("[Dealer] mq_send (request)");
+                } else {
+                    ++jobs_sent;
+                    std::cout << "[Dealer] Sent job " << msg.job << " -> fib(" << msg.data << ")\n";
+                }
+            }
+        } else if (errno != EAGAIN) {
+            perror("[Dealer] mq_receive (generator)");
+        }
+    }
+}
+
+// thread 2
+void recv_loop(mqd_t resp_q) {
+    MQ_RESPONSE_MESSAGE result;
+
+    while (true) {
+        ssize_t res_n = mq_receive(resp_q, (char*)&result, sizeof(result), nullptr);
+        if (res_n >= 0) {
+            ++jobs_received;
+            std::cout << "[Dealer] Received result for job " << result.job << ": " << result.result
+                      << " from worker PID [" << result.worker << "]" << std::endl;
+
+            if (generator_finished && jobs_received == jobs_sent) {
+                break;
+            }
+        } else if (errno != EAGAIN) {
+            perror("[Dealer] mq_receive (response)");
+        }
+    }
+}
 
 std::unordered_set<pid_t> workers;
 
@@ -40,7 +96,7 @@ void Dealer::run(const char* queue_generator_name) {
         exit(1);
     }
 
-    mqd_t resp_q = mq_open(resp_queue_name, O_CREAT | O_RDONLY | O_NONBLOCK, 0600, &resp_attr);
+    mqd_t resp_q = mq_open(resp_queue_name, O_CREAT | O_RDONLY, 0600, &resp_attr);
     if (resp_q == (mqd_t)-1) {
         perror("mq_open response queue");
         exit(1);
@@ -64,45 +120,17 @@ void Dealer::run(const char* queue_generator_name) {
         }
     }
 
-    mqd_t gen_q = mq_open(queue_generator_name, O_RDONLY | O_NONBLOCK);
+    mqd_t gen_q = mq_open(queue_generator_name, O_RDONLY);
     if (gen_q == (mqd_t)-1) {
         perror("mq_open (dealer)");
         return;
     }
 
-    MQ_REQUEST_MESSAGE_WORKER msg;
-    int received = 0, sent = 0;
-    bool gen_finished = 0;
+    std::thread sender(send_loop, gen_q, req_q);
+    std::thread receiver(recv_loop, resp_q);
 
-    while (true) {
-        // Try to receive from TaskGenerator (non-blocking)
-        ssize_t gen_n = mq_receive(gen_q, (char*)&msg, sizeof(msg), nullptr);
-        if (gen_n >= 0) {
-            if (msg.job == -1) {
-                gen_finished = true;
-            } else {
-                ++sent;
-                mq_send(req_q, (char*)&msg, sizeof(msg), 0);
-                std::cout << "[Dealer] Sent job " << msg.job << " -> fib(" << msg.data << ")\n";
-            }
-        } else if (errno != EAGAIN) {
-            perror("[Dealer] mq_receive (generator)");
-        }
-
-        // Try to receive from response queue
-        MQ_RESPONSE_MESSAGE result;
-        ssize_t res_n = mq_receive(resp_q, (char*)&result, sizeof(result), nullptr);
-        if (res_n >= 0) {
-            std::cout << "[Dealer] Received result for job " << result.job << ": " << result.result
-                      << " from worker PID [" << result.worker << "]" << std::endl;
-            ++received;
-        } else if (errno != EAGAIN) {
-            perror("[Dealer] mq_receive (response)");
-        }
-
-        if (gen_finished && sent == received) break;
-        usleep(100000);  // 0.1s
-    }
+    sender.join();
+    receiver.join();
 
     MQ_REQUEST_MESSAGE_WORKER shutdown_msg{.job = -2, .data = 0};
     for (size_t i = 0; i < workers.size(); ++i) {
