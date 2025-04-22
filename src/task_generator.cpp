@@ -27,10 +27,10 @@ void TaskGenerator::run(const char* queue_generator_name) {
     std::cout << "[TaskGenerator] Queue created: " << queue_generator_name << std::endl;
 
     std::vector<MQ_REQUEST_MESSAGE_WORKER> tasks = {
-        {.job = 1, .data = 35},  {.job = 2, .data = 36},  {.job = 3, .data = 37},
-        {.job = 4, .data = 38},  {.job = 5, .data = 39},  {.job = 6, .data = 40},
-        {.job = 7, .data = 35},  {.job = 8, .data = 36},  {.job = 9, .data = 37},
-        {.job = 10, .data = 38}, {.job = 11, .data = 39}, {.job = 12, .data = 40},
+        {.job = 1, .data = 40},  {.job = 2, .data = 41},  {.job = 3, .data = 42},
+        {.job = 4, .data = 43},  {.job = 5, .data = 44},  {.job = 6, .data = 45},
+        {.job = 7, .data = 45},  {.job = 8, .data = 41},  {.job = 9, .data = 42},
+        {.job = 10, .data = 43}, {.job = 11, .data = 44}, {.job = 12, .data = 45},
         {.job = -1, .data = 0}  // to shut down dealer
     };
 

@@ -14,4 +14,9 @@ typedef struct {
     int worker;
 } MQ_RESPONSE_MESSAGE;
 
+struct WorkerAck {
+    pid_t pid;
+    int job_id;
+};
+
 #endif

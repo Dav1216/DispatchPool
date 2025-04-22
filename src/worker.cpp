@@ -35,6 +35,13 @@ void Worker::run(const char* req_queue_name, const char* resp_queue_name) {
 
             MQ_RESPONSE_MESSAGE resp{.job = msg.job, .result = result, .worker = pid};
 
+            // simulate worker failure
+            if (std::rand() % 2 == 0) {
+                std::cout << "[Worker " << pid << "] Simulated crash!\n";
+                int* crash = nullptr;
+                *crash = 42;
+            }
+
             if (mq_send(resp_q, (char*)&resp, sizeof(resp), 0) == -1) {
                 perror("[Worker] mq_send (response)");
             }
