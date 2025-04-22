@@ -152,7 +152,6 @@ void recovery_loop(const char* req_queue_name, const char* resp_queue_name,
 
 // Thread 3: Sends jobs from the generator to workers
 // - Populates job_cache to support resending
-// - Ensures no duplicate jobs are counted or sent
 void send_loop(mqd_t gen_q, mqd_t req_q) {
     MQ_REQUEST_MESSAGE_WORKER msg;
 
@@ -190,7 +189,6 @@ void send_loop(mqd_t gen_q, mqd_t req_q) {
 
 // Thread 4: Receives completed results from workers
 // - Increments jobs_received
-// - Optional: cleans up job_by_worker to avoid stale entries
 void recv_loop(mqd_t resp_q) {
     MQ_RESPONSE_MESSAGE result;
 
