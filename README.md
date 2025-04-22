@@ -1,4 +1,4 @@
-# Fault-tolerant distributed task pool in modern C++ with POSIX message queues and signal-driven crash recovery
+# Fault-tolerant distributed process pool in C++ with POSIX message queues and signal-driven crash recovery
 
 A fault-tolerant task dispatcher written from scratch in C++ using forked UNIX processes and POSIX message queues. It distributes CPU-bound jobs (like `fib(n)`) to worker processes. If a worker crashes mid-task, the system detects the failure via `SIGCHLD`, resends the job, and spawns a replacement — ensuring no job is lost.
 
@@ -16,22 +16,25 @@ A fault-tolerant task dispatcher written from scratch in C++ using forked UNIX p
 ##  Correctness Model & Assumptions
 
 - **Job IDs are unique.** The system uses job IDs as keys in caches and tracking maps.
-- **One job per worker at a time.** The system assumes each worker only handles one job between ACK and result.
-- **ACKs are always sent before compute.** If a worker crashes mid-task, its last ACKed job is recoverable.
+- **One job per worker at a time.** Each worker only handles one job between ACK and result.
+- **ACKs are always sent before compute.** We assume that if a worker crashes mid-task, its last ACKed job is recoverable.
 - **No race conditions or deadlocks.**  
-All shared state accessed by multiple threads (e.g., job ownership, result counters, ACK buffers) is atomic or mutex-protected.
+  All shared state accessed by multiple threads (e.g., job ownership, result counters, ACK buffers) is atomic or mutex-protected.
 
-The **job cache (`job_cache`) is thread-safe by design**, even though it is not guarded by a mutex. This is safe because:
-
+  The **job cache (`job_cache`) is thread-safe by design**, even though it is not guarded by a mutex. This is safe because:
+  
   - Jobs are inserted into the cache **before they are sent** to any worker.
   - The recovery thread only reads from the cache **after** a worker has ACKed the job.
   - This creates a **happens-before guarantee** between write and read, making the pattern race-free without explicit synchronization.
-The `send_loop` and `recv_loop` run in separate threads, ensuring that no thread blocks on both the request and response queues.  
-This prevents the classic deadlock where:
-    - The Dealer blocks on sending to a full request queue
-    - Workers block on sending to a full response queue
-    - But the Dealer never consumes from the response queue because it's stuck on the request queue.
-  - By separating send and receive into independent threads, the system always makes progress even under full queues.
+
+  The `send_loop` and `recv_loop` run in separate threads, ensuring that no thread blocks on both the request and response queues.  
+  This prevents the deadlock where:
+
+  - The Dealer blocks on sending to a full request queue
+  - Workers block on sending to a full response queue
+  - But the Dealer never consumes from the response queue because it's stuck on the request queue
+
+  By separating send and receive into independent threads, the system always makes progress — even under full queues.
 - **No job loss.** Every job is guaranteed to complete (at least once), even if the assigned worker crashes.
 
 ---
