@@ -41,6 +41,7 @@ void TaskGenerator::run(const char* queue_generator_name) {
         }
         usleep(100000);  // 0.1s
     }
+    mq_close(req_q);
 }
 
 int main(int argc, char* argv[]) {
